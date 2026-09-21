@@ -147,7 +147,9 @@ table{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:
 th{text-align:left;font-weight:500;font-size:.72rem;color:var(--ink-faint);padding:.3rem .4rem;border-bottom:1px solid var(--rule-hard)}
 td{padding:.42rem .4rem;border-bottom:1px solid var(--rule)}
 th:last-child,td:last-child{text-align:right}
-th:nth-child(2),td:nth-child(2){text-align:right}
+#ledgerPanel th:nth-child(2),#ledgerPanel td:nth-child(2){text-align:right}
+#recordPanel th:nth-child(2),#recordPanel td:nth-child(2),
+#recordPanel th:nth-child(3),#recordPanel td:nth-child(3){text-align:right}
 tr:last-child td{border-bottom:none}
 .res-won{color:var(--win);font-weight:600}
 .res-lost{color:var(--loss);font-weight:600}
@@ -280,7 +282,7 @@ kbd{font:inherit;font-size:.85em;border:1px solid var(--rule-hard);border-bottom
     </div>
     <div class="scroll">
       <table>
-        <thead><tr><th>#</th><th>Staked</th><th>Result</th><th>P&amp;L</th></tr></thead>
+        <thead><tr><th>#</th><th>Start</th><th>End</th><th>Result</th><th>P&amp;L</th></tr></thead>
         <tbody id="recordBody"></tbody>
       </table>
     </div>
@@ -602,7 +604,7 @@ el("btnAbandon").addEventListener("click", function(){
 el("btnNext").addEventListener("click", function(){
   var r = replay(plan, state.outcomes);
   record.push({
-    bank: plan.risk, staked: r.staked, won: r.succeeded,
+    bank: plan.risk, capital: r.capital, staked: r.staked, won: r.succeeded,
     pnl: r.capital - plan.risk, at: Date.now()
   });
   if(record.length > 200) record = record.slice(-200);
@@ -762,18 +764,24 @@ function renderRecord(){
     var tr = document.createElement("tr");
     var sym = (state && state.cfg ? state.cfg.cur : "");
     var fmt = function(x){ return sym + x.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    /* older saved records predate the "capital" field — fall back to
+       bank + pnl, which is always equivalent and always available */
+    var endBalance = isFinite(c.capital) ? c.capital : (c.bank + c.pnl);
     tr.appendChild(td(i+1));
-    tr.appendChild(td(fmt(c.staked)));
+    tr.appendChild(td(fmt(c.bank)));
+    tr.appendChild(td(fmt(endBalance)));
     tr.appendChild(td(c.won ? "complete" : "lost", c.won ? "res-won" : "res-lost"));
-    tr.appendChild(td((c.pnl >= 0 ? "+" : "") + fmt(c.pnl), c.pnl >= 0 ? "res-won" : "res-lost"));
+    var pnlSign = c.pnl >= 0 ? "+" : "-";
+    tr.appendChild(td(pnlSign + fmt(Math.abs(c.pnl)), c.pnl >= 0 ? "res-won" : "res-lost"));
     body.appendChild(tr);
   });
   if(record.length){
     var sym2 = (state && state.cfg ? state.cfg.cur : "");
+    var netSign = totalPnl >= 0 ? "+" : "-";
     el("recordTotals").textContent =
       wonCount + " of " + record.length + " cycles completed. Net " +
-      (totalPnl >= 0 ? "+" : "") + sym2 +
-      totalPnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + ".";
+      netSign + sym2 +
+      Math.abs(totalPnl).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + ".";
   } else {
     el("recordTotals").textContent = "";
   }
