@@ -1,7 +1,7 @@
 {
-  "name": "Masaniello Docket",
-  "short_name": "Masaniello",
-  "description": "A self-contained Masaniello staking cycle calculator and tracker.",
+  "name": "99stayqs",
+  "short_name": "99stayqs",
+  "description": "A self-contained staking cycle calculator and tracker.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

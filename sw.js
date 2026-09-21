@@ -1,5 +1,5 @@
 "use strict";
-var CACHE = "masaniello-v1";
+var CACHE = "99stayqs-v2";
 var ASSETS = [
   "./",
   "./index.html",
