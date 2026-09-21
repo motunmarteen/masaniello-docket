@@ -1,6 +1,6 @@
 {
-  "name": "99stayqs",
-  "short_name": "99stayqs",
+  "name": "Stayqs99",
+  "short_name": "Stayqs99",
   "description": "A self-contained staking cycle calculator and tracker.",
   "start_url": "./index.html",
   "scope": "./",
