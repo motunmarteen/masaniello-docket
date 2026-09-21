@@ -383,9 +383,16 @@ function stakeFor(plan, index, winsNeeded, capital){
 }
 
 /* rebuild the whole cycle from the list of outcomes — makes undo trivial.
-   Capital hitting zero mid-cycle ends the cycle as a loss immediately: with
-   nothing left to stake, no further outcome can change the result, so we
-   stop replaying rather than record fabricated zero-stake rows. */
+   The self-financing stake is computed once from the plan's original
+   win-probability path (buildPlan/survivalTable), fixed at cycle start.
+   Actual results rarely track that exact path: a streak worse than the
+   plan assumed can push the required "residual" above the capital that's
+   actually left, so stakeFor floors the stake at $0. Once that happens the
+   cycle can no longer move — a $0 stake can't win or lose anything, so
+   capital is frozen and the cycle would otherwise sit open forever without
+   reaching its win target. That state is a loss (the plan is no longer
+   financeable), so we end the cycle there instead of continuing to record
+   meaningless $0.00 rows. Capital hitting zero outright ends it the same way. */
 function replay(plan, outcomes){
   var capital = plan.risk, wins = 0, rows = [], i, anyFloored = false;
   var succeeded = false, failed = false, failReason = null;
@@ -398,6 +405,7 @@ function replay(plan, outcomes){
     var picked = stakeFor(plan, i, needed, capital);
     var stake = picked.stake;
     if(picked.floored) anyFloored = true;
+    if(stake <= 0){ failed = true; failReason = "stalled"; break; }
     var before = capital;
     if(outcomes[i]){ capital = before + stake*(plan.odds[i]-1); wins++; }
     else { capital = before - stake; }
@@ -412,8 +420,18 @@ function replay(plan, outcomes){
     var stillLeft = plan.cfg.events - rows.length;
     if(capital <= 0){ failed = true; failReason = "capital"; }
     else if(stillNeeded > stillLeft){ failed = true; failReason = "events"; }
+    else{
+      /* every outcome so far replayed cleanly, but check whether the NEXT
+         (not yet played) trade can even be staked — a stall discovered here
+         means the plan is stuck before the player gets to act on it again. */
+      var nextPicked = stakeFor(plan, rows.length, stillNeeded, capital);
+      if(nextPicked.stake <= 0){ failed = true; failReason = "stalled"; }
+    }
   }
-  if(failed) capital = 0;
+  /* capital is only forced to zero when it's genuinely exhausted — a
+     "stalled" or "events" failure can still leave real money on the table,
+     and that should be reported honestly rather than wiped to $0. */
+  if(failed && failReason === "capital") capital = 0;
   return {capital:capital, wins:wins, rows:rows, succeeded:succeeded, failed:failed,
           failReason:failReason, finished:succeeded||failed,
           staked:rows.reduce(function(a,r){return a+r.stake;},0), floored:anyFloored};
@@ -590,10 +608,14 @@ el("btnNext").addEventListener("click", function(){
   if(record.length > 200) record = record.slice(-200);
   save(REC_KEY, record);
 
-  var nextBank = r.succeeded ? Math.round(r.capital*100)/100 : plan.risk;
+  /* whatever capital is actually left carries into the next cycle — a
+     failed cycle only resets to zero when capital was truly exhausted,
+     never when the plan merely stalled or ran out of events with money
+     still on the table. */
+  var nextBank = Math.round(r.capital*100)/100;
   state = { cfg: Object.assign({}, state.cfg, {bank: nextBank}), outcomes: [] };
   save(LIVE_KEY, state);
-  if(!r.succeeded) openSetup(); else render();
+  if(nextBank <= 0) openSetup(); else render();
 });
 
 el("clearRecord").addEventListener("click", function(){
@@ -683,12 +705,22 @@ function render(){
       el("btnNext").textContent = "Bank it and start the next cycle at " + money(r.capital);
     } else {
       el("vTitle").textContent = "Cycle lost";
-      var why = r.failReason === "capital"
-        ? "Capital ran out before reaching " + cfg.wins + " wins."
-        : (r.wins + " of " + cfg.wins + " wins with no events left.");
-      el("vBody").textContent =
-        why + " The " + money(plan.risk) + " at risk is gone. Set a fresh bankroll before continuing.";
-      el("btnNext").textContent = "Record it and set a new bankroll";
+      var why;
+      if(r.failReason === "capital"){
+        why = "Capital ran out before reaching " + cfg.wins + " wins.";
+      } else if(r.failReason === "stalled"){
+        why = "Results fell far enough off the original plan that the next stake calculated to " +
+          money(0) + " with " + (cfg.wins - r.wins) + " wins still needed — the plan can no longer finance itself.";
+      } else {
+        why = r.wins + " of " + cfg.wins + " wins with no events left.";
+      }
+      var moneyLine = r.capital > 0
+        ? (money(r.capital) + " remains uninvested and carries into the next cycle.")
+        : ("The " + money(plan.risk) + " at risk is gone.");
+      el("vBody").textContent = why + " " + moneyLine + " Set a fresh bankroll before continuing.";
+      el("btnNext").textContent = r.capital > 0
+        ? ("Record it and start the next cycle at " + money(r.capital))
+        : "Record it and set a new bankroll";
     }
   }
 
