@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Masaniello Docket</title>
+<meta name="description" content="A self-contained Masaniello staking cycle calculator and tracker.">
+<meta name="theme-color" content="#E3E6E0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121A1E" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="icons/icon-512.png" sizes="512x512" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Masaniello">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E3E6E0; --card:#EDEFEA; --sunk:#D6DAD3;
+  --ink:#101A22; --ink-soft:#4C5C65; --ink-faint:#7C8A91;
+  --rule:#BCC2BB; --rule-hard:#8F9890;
+  --brass:#8A620E; --brass-bg:#E8DFC6;
+  --win:#2C6349; --loss:#8C2E21;
+  --focus:#2B4EC9;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#121A1E; --card:#1A2429; --sunk:#0D1417;
+    --ink:#E4E9E3; --ink-soft:#99A7AD; --ink-faint:#6B7A81;
+    --rule:#2B373E; --rule-hard:#41525A;
+    --brass:#D4A63F; --brass-bg:#2C2718;
+    --win:#63B58B; --loss:#D9705B;
+    --focus:#7C96F0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#121A1E; --card:#1A2429; --sunk:#0D1417;
+  --ink:#E4E9E3; --ink-soft:#99A7AD; --ink-faint:#6B7A81;
+  --rule:#2B373E; --rule-hard:#41525A;
+  --brass:#D4A63F; --brass-bg:#2C2718;
+  --win:#63B58B; --loss:#D9705B;
+  --focus:#7C96F0;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:16px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 3rem;
+  padding-bottom:calc(3rem + env(safe-area-inset-bottom));
+  min-height:100vh;
+  min-height:100dvh;
+}
+.wrap{max-width:33rem;margin:0 auto;padding:0 1rem;padding-left:calc(1rem + env(safe-area-inset-left));padding-right:calc(1rem + env(safe-area-inset-right))}
+
+/* ---- masthead ---- */
+.masthead{
+  display:flex;align-items:baseline;justify-content:space-between;gap:1rem;
+  padding:1.1rem 0 .7rem;padding-top:calc(1.1rem + env(safe-area-inset-top));
+  border-bottom:2px solid var(--ink);margin-bottom:1.25rem;
+  flex-wrap:wrap;
+}
+.masthead h1{
+  font-family:'Fraunces',Georgia,serif;
+  font-variation-settings:'SOFT' 0,'WONK' 1,'opsz' 40;
+  font-weight:800;font-size:1.5rem;margin:0;letter-spacing:-.02em;
+}
+.spec{font-size:.8rem;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---- panels ---- */
+.panel{
+  background:var(--card);border:1px solid var(--rule);
+  padding:1.1rem;margin-bottom:1rem;
+}
+.panel-head{
+  display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+  margin:0 0 .85rem;font-size:.95rem;font-weight:600;
+}
+
+/* ---- setup form ---- */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field span{font-size:.78rem;color:var(--ink-soft)}
+input{
+  font:inherit;font-variant-numeric:tabular-nums;
+  background:var(--paper);color:var(--ink);
+  border:1px solid var(--rule-hard);padding:.55rem .6rem;width:100%;
+  border-radius:2px;
+  font-size:max(16px,1rem);
+}
+input:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+
+/* ---- buttons ---- */
+button{font:inherit;cursor:pointer;border-radius:2px;border:1px solid var(--rule-hard);
+  background:var(--paper);color:var(--ink);padding:.5rem .85rem;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+button:disabled{opacity:.4;cursor:not-allowed}
+.primary{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;width:100%;padding:.8rem}
+.ghost{background:transparent;border-color:var(--rule);color:var(--ink-soft);font-size:.82rem;padding:.5rem .7rem;min-height:2.4rem}
+
+.settle{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:1.1rem}
+.settle button{padding:1.1rem .5rem;font-size:1.05rem;font-weight:700;letter-spacing:.01em;border-width:2px;min-height:3.2rem}
+.b-win{border-color:var(--win);color:var(--win)}
+.b-win:hover:not(:disabled){background:var(--win);color:var(--card)}
+.b-loss{border-color:var(--loss);color:var(--loss)}
+.b-loss:hover:not(:disabled){background:var(--loss);color:var(--card)}
+
+/* ---- hero stake ---- */
+.stake-label{font-size:.82rem;color:var(--ink-soft);display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:.3rem}
+.stake{
+  font-family:'Fraunces',Georgia,serif;
+  font-variation-settings:'SOFT' 0,'WONK' 1,'opsz' 144;
+  font-weight:600;font-variant-numeric:tabular-nums lining-nums;
+  font-size:clamp(2.2rem,11vw,4rem);line-height:1.05;
+  margin:.15rem 0 .1rem;letter-spacing:-.03em;overflow-wrap:break-word;
+}
+.stake-sub{font-size:.85rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+
+/* ---- tallies ---- */
+.tally{margin:1.1rem 0 0}
+.tally-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap}
+.tally-name{font-size:.78rem;color:var(--ink-soft);min-width:3.6rem}
+.pips{display:flex;gap:.28rem;flex-wrap:wrap}
+.pip{width:.85rem;height:.85rem;border:1px solid var(--rule-hard);border-radius:50%}
+.pip.won{background:var(--win);border-color:var(--win)}
+.pip.lost{background:var(--loss);border-color:var(--loss)}
+.pip.now{border-color:var(--brass);border-width:2px;background:var(--brass-bg)}
+.pip.sq{border-radius:2px}
+.tally-count{font-size:.78rem;color:var(--ink-soft);font-variant-numeric:tabular-nums;margin-left:auto}
+
+/* ---- readouts ---- */
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;border-top:1px solid var(--rule);margin-top:1.1rem;padding-top:.85rem}
+.readout div{display:flex;flex-direction:column;gap:.1rem;min-width:0}
+.readout span{font-size:.72rem;color:var(--ink-faint)}
+.readout strong{font-size:.95rem;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+
+/* ---- ledger ---- */
+table{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:500;font-size:.72rem;color:var(--ink-faint);padding:.3rem .4rem;border-bottom:1px solid var(--rule-hard)}
+td{padding:.42rem .4rem;border-bottom:1px solid var(--rule)}
+th:last-child,td:last-child{text-align:right}
+th:nth-child(2),td:nth-child(2){text-align:right}
+tr:last-child td{border-bottom:none}
+.res-won{color:var(--win);font-weight:600}
+.res-lost{color:var(--loss);font-weight:600}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ---- verdict ---- */
+.verdict{border-width:2px}
+.verdict.good{border-color:var(--win)}
+.verdict.bad{border-color:var(--loss)}
+.verdict h2{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 0,'WONK' 1,'opsz' 60;
+  font-weight:800;font-size:1.55rem;margin:0 0 .2rem;letter-spacing:-.02em}
+.verdict.good h2{color:var(--win)}
+.verdict.bad h2{color:var(--loss)}
+.verdict p{margin:0 0 1rem;color:var(--ink-soft);font-size:.9rem}
+
+.note{font-size:.78rem;color:var(--ink-faint);margin:.7rem 0 0;line-height:1.5}
+kbd{font:inherit;font-size:.85em;border:1px solid var(--rule-hard);border-bottom-width:2px;
+  border-radius:3px;padding:.05em .4em;background:var(--sunk);color:var(--ink-soft)}
+.warn{border-left:3px solid var(--brass);background:var(--brass-bg);color:var(--ink);
+  padding:.65rem .8rem;font-size:.8rem;margin-bottom:1rem}
+.hidden{display:none !important}
+.row-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.9rem}
+
+@media (max-width:26rem){
+  .readout{grid-template-columns:1fr 1fr}
+  .grid{grid-template-columns:1fr}
+}
+@media (min-width:48rem){
+  .wrap{max-width:38rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <h1>Masaniello Docket</h1>
+    <div class="spec" id="spec">10 events · 3 wins · 1.87</div>
+  </header>
+
+  <!-- SETUP -->
+  <section class="panel" id="setup">
+    <div class="panel-head"><span>Cycle setup</span>
+      <button class="ghost" id="closeSetup">Close</button>
+    </div>
+    <div class="grid">
+      <label class="field"><span>Bankroll for this cycle</span><input id="fBank" type="number" step="any" min="0" inputmode="decimal" placeholder="Amount to risk, e.g. 1000"></label>
+      <label class="field"><span>Currency symbol</span><input id="fCur" type="text" maxlength="3" placeholder="e.g. $"></label>
+      <label class="field"><span>Events</span><input id="fEvents" type="number" step="1" min="1" max="40" inputmode="numeric" placeholder="Trades in the cycle, 1–40"></label>
+      <label class="field"><span>Wins required</span><input id="fWins" type="number" step="1" min="1" max="40" inputmode="numeric" placeholder="Wins needed to complete"></label>
+      <label class="field"><span>Payout odds (decimal)</span><input id="fOdds" type="number" step="0.01" min="1.01" inputmode="decimal" placeholder="e.g. 1.87"></label>
+      <label class="field"><span>Broker minimum trade</span><input id="fMin" type="number" step="any" min="0" inputmode="decimal" placeholder="Smallest stake your broker allows"></label>
+    </div>
+    <p class="warn hidden" id="formWarn"></p>
+    <p class="note" id="preview"></p>
+    <div class="row-actions">
+      <button class="primary" id="startBtn">Start cycle</button>
+    </div>
+  </section>
+
+  <!-- LIVE -->
+  <section class="panel hidden" id="live">
+    <p class="warn hidden" id="floorWarn">One or more stakes this cycle were raised to the broker minimum, so capital is no longer tracking the exact self-financing plan.</p>
+    <div class="stake-label">
+      <span>Stake this trade</span>
+      <span id="eventCounter"></span>
+    </div>
+    <div class="stake" id="stakeFig" aria-live="polite">—</div>
+    <div class="stake-sub" id="stakeSub"></div>
+
+    <div class="settle">
+      <button class="b-win" id="btnWin">Won</button>
+      <button class="b-loss" id="btnLoss">Lost</button>
+    </div>
+
+    <div class="tally">
+      <div class="tally-row">
+        <span class="tally-name">Events</span>
+        <div class="pips" id="pipEvents"></div>
+        <span class="tally-count" id="cntEvents"></span>
+      </div>
+      <div class="tally-row">
+        <span class="tally-name">Wins</span>
+        <div class="pips" id="pipWins"></div>
+        <span class="tally-count" id="cntWins"></span>
+      </div>
+    </div>
+
+    <div class="readout">
+      <div><span>Capital now</span><strong id="roCapital">—</strong></div>
+      <div><span>Completes at</span><strong id="roTarget">—</strong></div>
+      <div><span>Profit if done</span><strong id="roProfit">—</strong></div>
+    </div>
+
+    <div class="row-actions">
+      <button class="ghost" id="btnUndo">Undo last</button>
+      <button class="ghost" id="btnAbandon">Abandon cycle</button>
+      <button class="ghost" id="btnSettings">Settings</button>
+    </div>
+    <p class="note">Keyboard: <kbd>W</kbd> won · <kbd>L</kbd> lost · <kbd>U</kbd> undo</p>
+  </section>
+
+  <!-- VERDICT -->
+  <section class="panel verdict hidden" id="verdict" role="status" aria-live="polite">
+    <h2 id="vTitle"></h2>
+    <p id="vBody"></p>
+    <button class="primary" id="btnNext"></button>
+    <div class="row-actions">
+      <button class="ghost" id="btnUndo2">Undo last</button>
+      <button class="ghost" id="btnSettings2">Change setup</button>
+    </div>
+  </section>
+
+  <!-- LEDGER -->
+  <section class="panel hidden" id="ledgerPanel">
+    <div class="panel-head"><span>This cycle</span></div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>#</th><th>Stake</th><th>Result</th><th>Capital</th></tr></thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- RECORD -->
+  <section class="panel hidden" id="recordPanel">
+    <div class="panel-head"><span>Completed cycles</span>
+      <button class="ghost" id="clearRecord">Clear</button>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>#</th><th>Staked</th><th>Result</th><th>P&amp;L</th></tr></thead>
+        <tbody id="recordBody"></tbody>
+      </table>
+    </div>
+    <p class="note" id="recordTotals"></p>
+  </section>
+
+  <p class="note" id="storageNote"></p>
+  <p class="note" id="installNote"></p>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var LIVE_KEY = "masaniello.live.v1";
+var REC_KEY  = "masaniello.record.v1";
+
+/* ---------------- storage (never allowed to break the page) -------------- */
+var storageOK = true;
+function load(key){
+  try{ var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
+  catch(e){ storageOK = false; return null; }
+}
+function save(key,val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }
+  catch(e){ storageOK = false; }
+}
+function drop(key){ try{ localStorage.removeItem(key); }catch(e){ storageOK=false; } }
+
+/* guards against a shape mismatch from an older/newer version of this page
+   turning into silent NaN throughout the UI — discard instead of rendering garbage */
+function isValidCfg(cfg){
+  return cfg && typeof cfg === "object" &&
+    isFinite(cfg.bank) && cfg.bank >= 0 &&
+    typeof cfg.cur === "string" &&
+    Number.isInteger(cfg.events) && cfg.events >= 1 && cfg.events <= 40 &&
+    Number.isInteger(cfg.wins) && cfg.wins >= 1 && cfg.wins <= cfg.events &&
+    isFinite(cfg.odds) && cfg.odds >= 1.01 &&
+    isFinite(cfg.minStake) && cfg.minStake >= 0;
+}
+function isValidState(s){
+  return s && typeof s === "object" && isValidCfg(s.cfg) &&
+    Array.isArray(s.outcomes) && s.outcomes.every(function(o){ return typeof o === "boolean"; });
+}
+function isValidRecord(rec){
+  return Array.isArray(rec) && rec.every(function(c){
+    return c && typeof c === "object" &&
+      isFinite(c.bank) && isFinite(c.staked) && isFinite(c.pnl) &&
+      typeof c.won === "boolean" && isFinite(c.at);
+  });
+}
+
+/* ---------------- the maths ---------------------------------------------- */
+
+/* survival[i][t] = chance of at least t more wins across events i..n-1,
+   priced at the implied probability of each event (p = 1/odds).
+   This is what makes the ladder self-financing. */
+function survivalTable(odds, winsRequired){
+  var n = odds.length, i, t;
+  var tbl = new Array(n+1);
+  for(i=0;i<=n;i++){ tbl[i] = new Array(winsRequired+1).fill(0); tbl[i][0] = 1; }
+  for(i=n-1;i>=0;i--){
+    var p = 1/odds[i], q = 1-p;
+    for(t=1;t<=winsRequired;t++){
+      tbl[i][t] = p*tbl[i+1][t-1] + q*tbl[i+1][t];
+    }
+  }
+  return tbl;
+}
+
+function buildPlan(cfg){
+  var odds = new Array(cfg.events).fill(cfg.odds);
+  var surv = survivalTable(odds, cfg.wins);
+  var p0 = surv[0][cfg.wins];
+  return {
+    cfg: cfg, odds: odds, surv: surv,
+    completion: p0,
+    risk: cfg.bank,
+    target: cfg.bank / p0
+  };
+}
+
+/* stake = capital held back from what the next state still needs to finance.
+   Returns {stake, floored} — floored marks when minStake forced a departure
+   from the exact self-financing amount, so callers can warn the user. */
+function stakeFor(plan, index, winsNeeded, capital){
+  if(winsNeeded <= 0) return {stake:0, floored:false};
+  if(index >= plan.cfg.events) return {stake:0, floored:false};
+  if(winsNeeded > plan.cfg.events - index) return {stake:0, floored:false};
+  var residual = plan.target * plan.surv[index+1][winsNeeded];
+  var s = capital - residual;
+  if(s < 0) s = 0;
+  if(s > capital) s = capital;
+  s = Math.round(s*100)/100;
+  var min = plan.cfg.minStake;
+  var floored = false;
+  if(min > 0 && s > 0 && s < min && min <= capital){ s = min; floored = true; }
+  return {stake:s, floored:floored};
+}
+
+/* rebuild the whole cycle from the list of outcomes — makes undo trivial */
+function replay(plan, outcomes){
+  var capital = plan.risk, wins = 0, rows = [], i, anyFloored = false;
+  for(i=0;i<outcomes.length;i++){
+    var needed = plan.cfg.wins - wins;
+    var picked = stakeFor(plan, i, needed, capital);
+    var stake = picked.stake;
+    if(picked.floored) anyFloored = true;
+    var before = capital;
+    if(outcomes[i]){ capital = before + stake*(plan.odds[i]-1); wins++; }
+    else { capital = before - stake; }
+    capital = Math.round(capital*100)/100;
+    if(Math.abs(capital) < 1e-9) capital = 0;
+    rows.push({n:i+1, stake:stake, won:outcomes[i], after:capital});
+  }
+  var succeeded = wins >= plan.cfg.wins;
+  var left = plan.cfg.events - outcomes.length;
+  var failed = !succeeded && (plan.cfg.wins - wins) > left;
+  if(failed) capital = 0;
+  return {capital:capital, wins:wins, rows:rows, succeeded:succeeded, failed:failed,
+          finished:succeeded||failed, staked:rows.reduce(function(a,r){return a+r.stake;},0),
+          floored:anyFloored};
+}
+
+/* ---------------- state --------------------------------------------------- */
+var state = load(LIVE_KEY);
+if(state !== null && !isValidState(state)){ drop(LIVE_KEY); state = null; }
+var record = load(REC_KEY);
+if(!isValidRecord(record)){ if(record !== null) drop(REC_KEY); record = []; }
+var plan = null;
+
+function el(id){ return document.getElementById(id); }
+/* tracks the currency symbol to show while no cycle is live yet (setup preview) */
+var previewCur = "$";
+function money(x){
+  var cur = (state && state.cfg ? state.cfg.cur : previewCur) || "";
+  return cur + x.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function show(node,on){ node.classList.toggle("hidden", !on); }
+
+/* ---------------- setup --------------------------------------------------- */
+/* Inputs carry only placeholders, never a real prefilled value — an empty
+   field silently falls back to its placeholder (shown as a hint, not a
+   choice the user made). A non-empty value that's out of range is a real
+   correction and gets reported in warnings. */
+function readForm(){
+  var warnings = [];
+
+  var eventsRaw = el("fEvents").value;
+  var events = eventsRaw === "" ? 10 : Math.round(+eventsRaw);
+  if(eventsRaw !== ""){
+    if(!isFinite(+eventsRaw) || +eventsRaw <= 0){ events = 10; warnings.push("Events must be a positive number — using 10."); }
+    else if(events !== +eventsRaw){ warnings.push("Events must be a whole number — rounded to " + events + "."); }
+  }
+  events = Math.min(40, Math.max(1, events));
+
+  var winsRaw = el("fWins").value;
+  var wins = winsRaw === "" ? 3 : Math.round(+winsRaw);
+  if(winsRaw !== ""){
+    if(!isFinite(+winsRaw) || +winsRaw <= 0){ wins = 3; warnings.push("Wins required must be a positive number — using 3."); }
+    else if(wins !== +winsRaw){ warnings.push("Wins required must be a whole number — rounded to " + wins + "."); }
+  }
+  if(wins > events){ warnings.push("Wins required can't exceed events — capped at " + events + "."); wins = events; }
+
+  var bankRaw = el("fBank").value;
+  var bank = bankRaw === "" ? 0 : +bankRaw;
+  if(bankRaw !== "" && (!isFinite(bank) || bank < 0)){ bank = 0; warnings.push("Bankroll must be zero or more — using 0."); }
+
+  var oddsRaw = el("fOdds").value;
+  var odds = oddsRaw === "" ? 1.87 : +oddsRaw;
+  if(oddsRaw !== "" && (!isFinite(odds) || odds < 1.01)){ odds = 1.87; warnings.push("Payout odds must be at least 1.01 — using 1.87."); }
+
+  var minRaw = el("fMin").value;
+  var minStake = minRaw === "" ? 1 : +minRaw;
+  if(minRaw !== "" && (!isFinite(minStake) || minStake < 0)){ minStake = 1; warnings.push("Broker minimum can't be negative — using 1."); }
+
+  var curRaw = el("fCur").value;
+  var cur = curRaw === "" ? "$" : curRaw;
+
+  return {
+    cfg: {
+      bank: bank,
+      cur: cur,
+      events: events,
+      wins: wins,
+      odds: odds,
+      minStake: minStake
+    },
+    warnings: warnings
+  };
+}
+
+function refreshPreview(){
+  var parsed = readForm();
+  var cfg = parsed.cfg;
+  previewCur = cfg.cur;
+  var p = buildPlan(cfg);
+  var profit = p.target - p.risk;
+  var mult = profit > 0 ? (p.risk/profit) : 0;
+  var text = profit > 0 ?
+    ("Completing pays " + cfg.cur + profit.toLocaleString(undefined,{maximumFractionDigits:2}) +
+    ", a " + (100*profit/p.risk).toFixed(2) + "% return on the " +
+    cfg.cur + p.risk.toLocaleString(undefined,{maximumFractionDigits:2}) + " at risk. " +
+    "You are putting up " + mult.toFixed(1) + " times your target profit to win it, " +
+    "and break-even on a single trade sits at " + (100/cfg.odds).toFixed(2) + "%.")
+    : "Set a bankroll above zero to see a preview.";
+  el("preview").textContent = text;
+
+  var warnBox = el("formWarn");
+  if(parsed.warnings.length){
+    warnBox.textContent = parsed.warnings.join(" ");
+    show(warnBox, true);
+  } else {
+    show(warnBox, false);
+  }
+  return parsed;
+}
+
+["fBank","fCur","fEvents","fWins","fOdds","fMin"].forEach(function(id){
+  el(id).addEventListener("input", refreshPreview);
+});
+
+function openSetup(){
+  if(state && state.cfg){
+    el("fBank").value = state.cfg.bank; el("fCur").value = state.cfg.cur;
+    el("fEvents").value = state.cfg.events; el("fWins").value = state.cfg.wins;
+    el("fOdds").value = state.cfg.odds; el("fMin").value = state.cfg.minStake;
+  }
+  refreshPreview();
+  show(el("setup"), true);
+  show(el("closeSetup"), !!state);
+  el("fBank").focus();
+}
+
+el("closeSetup").addEventListener("click", function(){ show(el("setup"), false); render(); });
+el("btnSettings").addEventListener("click", openSetup);
+el("btnSettings2").addEventListener("click", openSetup);
+
+el("startBtn").addEventListener("click", function(){
+  var parsed = refreshPreview();
+  var cfg = parsed.cfg;
+  if(cfg.bank <= 0){
+    var warnBox = el("formWarn");
+    warnBox.textContent = "Enter a bankroll above zero to start a cycle.";
+    show(warnBox, true);
+    el("fBank").focus();
+    return;
+  }
+  if(state && state.outcomes && state.outcomes.length && !replay(buildPlan(state.cfg), state.outcomes).finished){
+    if(!confirm("A cycle is already in progress. Starting a new one discards its trades. Continue?")) return;
+  }
+  state = { cfg: cfg, outcomes: [] };
+  save(LIVE_KEY, state);
+  show(el("setup"), false);
+  render();
+});
+
+/* ---------------- settling ------------------------------------------------ */
+function settle(won){
+  if(!state) return;
+  var r = replay(plan, state.outcomes);
+  if(r.finished) return;
+  state.outcomes.push(won);
+  save(LIVE_KEY, state);
+  render();
+}
+el("btnWin").addEventListener("click", function(){ settle(true); });
+el("btnLoss").addEventListener("click", function(){ settle(false); });
+
+function undo(){
+  if(!state || !state.outcomes.length) return;
+  state.outcomes.pop();
+  save(LIVE_KEY, state);
+  render();
+}
+el("btnUndo").addEventListener("click", undo);
+el("btnUndo2").addEventListener("click", undo);
+
+el("btnAbandon").addEventListener("click", function(){
+  if(!state) return;
+  if(!confirm("Abandon this cycle? The trades logged so far are discarded.")) return;
+  state.outcomes = [];
+  save(LIVE_KEY, state);
+  render();
+});
+
+el("btnNext").addEventListener("click", function(){
+  var r = replay(plan, state.outcomes);
+  record.push({
+    bank: plan.risk, staked: r.staked, won: r.succeeded,
+    pnl: r.capital - plan.risk, at: Date.now()
+  });
+  if(record.length > 200) record = record.slice(-200);
+  save(REC_KEY, record);
+
+  var nextBank = r.succeeded ? Math.round(r.capital*100)/100 : plan.risk;
+  state = { cfg: Object.assign({}, state.cfg, {bank: nextBank}), outcomes: [] };
+  save(LIVE_KEY, state);
+  if(!r.succeeded) openSetup(); else render();
+});
+
+el("clearRecord").addEventListener("click", function(){
+  if(!confirm("Clear the completed-cycle record?")) return;
+  record = []; drop(REC_KEY); render();
+});
+
+/* keyboard: w / l / u */
+document.addEventListener("keydown", function(e){
+  if(e.target.tagName === "INPUT") return;
+  if(e.key === "w" || e.key === "W") settle(true);
+  else if(e.key === "l" || e.key === "L") settle(false);
+  else if(e.key === "u" || e.key === "U") undo();
+});
+
+/* ---------------- render -------------------------------------------------- */
+function pips(container, count, decorate){
+  container.innerHTML = "";
+  for(var i=0;i<count;i++){
+    var d = document.createElement("div");
+    d.className = "pip";
+    decorate(d, i);
+    container.appendChild(d);
+  }
+}
+
+function render(){
+  if(!state){ openSetup(); renderRecord(); renderStorageNote(); return; }
+  plan = buildPlan(state.cfg);
+  var r = replay(plan, state.outcomes);
+  var cfg = state.cfg;
+
+  el("spec").textContent = cfg.events + " events · " + cfg.wins + " wins · " + cfg.odds.toFixed(2);
+
+  var setupOpen = !el("setup").classList.contains("hidden");
+  show(el("live"), !setupOpen && !r.finished);
+  show(el("verdict"), !setupOpen && r.finished);
+  show(el("ledgerPanel"), !setupOpen && r.rows.length > 0);
+  show(el("recordPanel"), !setupOpen && record.length > 0);
+
+  show(el("floorWarn"), r.floored && !r.finished);
+
+  /* live */
+  if(!r.finished){
+    var needed = cfg.wins - r.wins;
+    var picked = stakeFor(plan, state.outcomes.length, needed, r.capital);
+    var stake = picked.stake;
+    el("stakeFig").textContent = money(stake);
+    el("eventCounter").textContent = "trade " + (state.outcomes.length+1) + " of " + cfg.events;
+    el("stakeSub").textContent =
+      "Returns " + money(stake*(cfg.odds-1)) + " on a win. " +
+      needed + (needed === 1 ? " win" : " wins") + " still needed from " +
+      (cfg.events - state.outcomes.length) + " remaining." +
+      (picked.floored ? " Raised to the broker minimum, off the exact plan." : "");
+    el("btnWin").disabled = false; el("btnLoss").disabled = false;
+  }
+
+  /* tallies */
+  pips(el("pipEvents"), cfg.events, function(d,i){
+    d.classList.add("sq");
+    if(i < state.outcomes.length) d.classList.add(state.outcomes[i] ? "won" : "lost");
+    else if(i === state.outcomes.length && !r.finished) d.classList.add("now");
+  });
+  pips(el("pipWins"), cfg.wins, function(d,i){
+    if(i < r.wins) d.classList.add("won");
+  });
+  el("cntEvents").textContent = state.outcomes.length + "/" + cfg.events;
+  el("cntWins").textContent = r.wins + "/" + cfg.wins;
+
+  el("roCapital").textContent = money(r.capital);
+  el("roTarget").textContent = money(plan.target);
+  el("roProfit").textContent = money(plan.target - plan.risk);
+
+  el("btnUndo").disabled = state.outcomes.length === 0;
+  el("btnUndo2").disabled = state.outcomes.length === 0;
+
+  /* verdict */
+  if(r.finished){
+    var v = el("verdict");
+    v.classList.toggle("good", r.succeeded);
+    v.classList.toggle("bad", !r.succeeded);
+    if(r.succeeded){
+      el("vTitle").textContent = "Cycle complete";
+      el("vBody").textContent =
+        r.wins + " wins banked in " + state.outcomes.length + " trades. Capital closed at " +
+        money(r.capital) + ", a profit of " + money(r.capital - plan.risk) + ".";
+      el("btnNext").textContent = "Bank it and start the next cycle at " + money(r.capital);
+    } else {
+      el("vTitle").textContent = "Cycle lost";
+      el("vBody").textContent =
+        r.wins + " of " + cfg.wins + " wins with no events left. The " +
+        money(plan.risk) + " at risk is gone. Set a fresh bankroll before continuing.";
+      el("btnNext").textContent = "Record it and set a new bankroll";
+    }
+  }
+
+  renderLedger(r);
+  renderRecord();
+  renderStorageNote();
+}
+
+/* builds a <td> via textContent — nothing here is ever raw HTML, even though
+   currency symbol is free-text user input that flows through money()/fmt() */
+function td(text, className){
+  var cell = document.createElement("td");
+  cell.textContent = text;
+  if(className) cell.className = className;
+  return cell;
+}
+
+function renderLedger(r){
+  var body = el("ledgerBody");
+  body.innerHTML = "";
+  r.rows.forEach(function(row){
+    var tr = document.createElement("tr");
+    tr.appendChild(td(row.n));
+    tr.appendChild(td(money(row.stake)));
+    tr.appendChild(td(row.won ? "won" : "lost", row.won ? "res-won" : "res-lost"));
+    tr.appendChild(td(money(row.after)));
+    body.appendChild(tr);
+  });
+}
+
+function renderRecord(){
+  var body = el("recordBody");
+  if(!body) return;
+  body.innerHTML = "";
+  var totalPnl = 0, wonCount = 0;
+  record.forEach(function(c, i){
+    totalPnl += c.pnl;
+    if(c.won) wonCount++;
+    var tr = document.createElement("tr");
+    var sym = (state && state.cfg ? state.cfg.cur : "");
+    var fmt = function(x){ return sym + x.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    tr.appendChild(td(i+1));
+    tr.appendChild(td(fmt(c.staked)));
+    tr.appendChild(td(c.won ? "complete" : "lost", c.won ? "res-won" : "res-lost"));
+    tr.appendChild(td((c.pnl >= 0 ? "+" : "") + fmt(c.pnl), c.pnl >= 0 ? "res-won" : "res-lost"));
+    body.appendChild(tr);
+  });
+  if(record.length){
+    var sym2 = (state && state.cfg ? state.cfg.cur : "");
+    el("recordTotals").textContent =
+      wonCount + " of " + record.length + " cycles completed. Net " +
+      (totalPnl >= 0 ? "+" : "") + sym2 +
+      totalPnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + ".";
+  } else {
+    el("recordTotals").textContent = "";
+  }
+}
+
+function renderStorageNote(){
+  el("storageNote").textContent = storageOK
+    ? "Your cycle is saved in this browser, so you can close the tab mid-cycle and pick it up."
+    : "This browser is blocking local storage, so the cycle will not survive a reload. Finish it in one sitting.";
+}
+
+/* ---------------- boot ---------------------------------------------------- */
+if(state && state.cfg){ show(el("setup"), false); render(); }
+else { openSetup(); renderRecord(); renderStorageNote(); }
+
+/* ---------------- PWA: service worker + install prompt -------------------- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+var deferredInstall = null;
+window.addEventListener("beforeinstallprompt", function(e){
+  e.preventDefault();
+  deferredInstall = e;
+  var note = el("installNote");
+  note.textContent = "Install this as an app for quicker access. ";
+  var btn = document.createElement("button");
+  btn.className = "ghost";
+  btn.textContent = "Install";
+  btn.style.marginLeft = ".4rem";
+  btn.addEventListener("click", function(){
+    deferredInstall.prompt();
+    deferredInstall.userChoice.finally(function(){
+      deferredInstall = null;
+      note.textContent = "";
+    });
+  });
+  note.appendChild(btn);
+});
+
+})();
+</script>
+</body>
+</html>
